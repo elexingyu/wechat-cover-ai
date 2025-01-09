@@ -2,3 +2,4 @@
 __pycache__/
 output/
 .streamlit/secrets.toml
+usage_data.json
