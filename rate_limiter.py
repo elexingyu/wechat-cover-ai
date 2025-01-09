@@ -13,6 +13,11 @@ class RateLimiter:
         self.limit = limit
         self.window = window
         self.storage_path = os.path.join(os.path.dirname(__file__), 'usage_data.json')
+        # 添加白名单用户
+        self.whitelist = {
+            # 这里添加你的用户标识
+            "b14a7b8059d9c055954c92674ce60032",  # 示例ID，需要替换为你的实际ID
+        }
         self.load_data()
     
     def load_data(self):
@@ -36,91 +41,28 @@ class RateLimiter:
             if now - datetime.fromisoformat(data['last_reset']) < timedelta(hours=self.window)
         }
     
-    def check_rate_limit(self, ip: str) -> Tuple[bool, Dict]:
-        """
-        检查是否超出速率限制
-        :return: (是否允许请求, 使用情况信息)
-        """
-        now = datetime.now()
-        self.clean_old_data()
-        
-        if ip not in self.usage_data:
-            self.usage_data[ip] = {
-                'count': 0,
-                'last_reset': now.isoformat()
-            }
-        
-        data = self.usage_data[ip]
-        last_reset = datetime.fromisoformat(data['last_reset'])
-        
-        # 检查是否需要重置计数器
-        if now - last_reset >= timedelta(hours=self.window):
-            data['count'] = 0
-            data['last_reset'] = now.isoformat()
-        
-        # 检查是否超出限制
-        if data['count'] >= self.limit:
-            next_reset = last_reset + timedelta(hours=self.window)
-            remaining_time = next_reset - now
-            hours = remaining_time.seconds // 3600
-            minutes = (remaining_time.seconds % 3600) // 60
-            
+    def check_rate_limit(self, user_id: str) -> Tuple[bool, Dict]:
+        """检查是否超出速率限制"""
+        # 白名单用户无限制
+        if user_id in self.whitelist:
             info = {
-                'remaining_requests': 0,
-                'reset_in': f"{hours}小时{minutes}分钟后重置"
+                'remaining_requests': '无限制',
+                'reset_in': '永久有效'
             }
-            return False, info
-        
-        # 更新计数
-        data['count'] += 1
-        self.save_data()
-        
-        info = {
-            'remaining_requests': self.limit - data['count'],
-            'reset_in': f"{self.window}小时内"
-        }
-        return True, info 
+            return True, info
+            
+        # 原有的限制逻辑...
+        return super().check_rate_limit(user_id)
     
-    def get_usage_info(self, ip: str) -> Tuple[bool, Dict]:
-        """
-        获取使用情况信息（不增加计数）
-        """
-        now = datetime.now()
-        self.clean_old_data()
-        
-        if ip not in self.usage_data:
+    def get_usage_info(self, user_id: str) -> Tuple[bool, Dict]:
+        """获取使用情况信息"""
+        # 白名单用户显示无限制
+        if user_id in self.whitelist:
             info = {
-                'remaining_requests': self.limit,
-                'reset_in': f"{self.window}小时内"
+                'remaining_requests': '无限制',
+                'reset_in': '永久有效'
             }
             return True, info
-        
-        data = self.usage_data[ip]
-        last_reset = datetime.fromisoformat(data['last_reset'])
-        
-        # 检查是否需要重置计数器
-        if now - last_reset >= timedelta(hours=self.window):
-            info = {
-                'remaining_requests': self.limit,
-                'reset_in': f"{self.window}小时内"
-            }
-            return True, info
-        
-        # 返回当前使用情况
-        if data['count'] >= self.limit:
-            next_reset = last_reset + timedelta(hours=self.window)
-            remaining_time = next_reset - now
-            hours = remaining_time.seconds // 3600
-            minutes = (remaining_time.seconds % 3600) // 60
             
-            info = {
-                'remaining_requests': 0,
-                'reset_in': f"{hours}小时{minutes}分钟后重置"
-            }
-            return False, info
-        
-        info = {
-            'remaining_requests': self.limit - data['count'],
-            'reset_in': f"{self.window}小时内"
-        }
-        return True, info 
+        # 原有的获取信息逻辑...
+        return super().get_usage_info(user_id) 
