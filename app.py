@@ -7,7 +7,9 @@ from PIL import Image
 import requests
 from io import BytesIO
 import os
+import hashlib
 from config import *
+import time
 
 # 初始化速率限制器
 rate_limiter = RateLimiter(limit=3, window=24)
@@ -16,16 +18,28 @@ st.set_page_config(page_title="活水智能封面生成器", page_icon="🎨")
 
 st.title("活水智能封面生成器 🎨")
 
-# 获取用户IP
-def get_client_ip():
+def get_user_id():
+    """
+    获取用户唯一标识
+    基于用户的一些持久特征生成一个唯一标识
+    """
     try:
-        return st.experimental_get_query_params().get('client_ip', ['unknown'])[0]
+        # 使用新的 API 获取用户信息
+        user_agent = st.query_params.get('User-Agent', '')
+        language = st.query_params.get('Accept-Language', '')
+        
+        # 组合信息并生成哈希
+        user_data = f"{user_agent}_{language}"
+        return hashlib.md5(user_data.encode()).hexdigest()
     except:
-        return 'unknown'
+        # 如果获取失败，生成一个基于会话的ID
+        if 'user_id' not in st.session_state:
+            st.session_state.user_id = hashlib.md5(str(time.time()).encode()).hexdigest()
+        return st.session_state.user_id
 
-# 显示使用限制信息
-client_ip = get_client_ip()
-allowed, info = rate_limiter.check_rate_limit(client_ip)
+# 获取使用情况信息（不增加计数）
+user_id = get_user_id()
+_, info = rate_limiter.get_usage_info(user_id)
 
 # 显示剩余次数
 st.info(f"今日剩余使用次数: {info['remaining_requests']} 次 ({info['reset_in']})")
@@ -34,6 +48,9 @@ st.info(f"今日剩余使用次数: {info['remaining_requests']} 次 ({info['res
 url = st.text_input("请输入文章链接：")
 
 if st.button("生成封面"):
+    # 只在点击按钮时检查并增加计数
+    allowed, info = rate_limiter.check_rate_limit(user_id)
+    
     if not allowed:
         st.error(f"已达到今日使用限制，请{info['reset_in']}再试")
     else:

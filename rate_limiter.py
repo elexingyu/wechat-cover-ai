@@ -80,3 +80,47 @@ class RateLimiter:
             'reset_in': f"{self.window}小时内"
         }
         return True, info 
+    
+    def get_usage_info(self, ip: str) -> Tuple[bool, Dict]:
+        """
+        获取使用情况信息（不增加计数）
+        """
+        now = datetime.now()
+        self.clean_old_data()
+        
+        if ip not in self.usage_data:
+            info = {
+                'remaining_requests': self.limit,
+                'reset_in': f"{self.window}小时内"
+            }
+            return True, info
+        
+        data = self.usage_data[ip]
+        last_reset = datetime.fromisoformat(data['last_reset'])
+        
+        # 检查是否需要重置计数器
+        if now - last_reset >= timedelta(hours=self.window):
+            info = {
+                'remaining_requests': self.limit,
+                'reset_in': f"{self.window}小时内"
+            }
+            return True, info
+        
+        # 返回当前使用情况
+        if data['count'] >= self.limit:
+            next_reset = last_reset + timedelta(hours=self.window)
+            remaining_time = next_reset - now
+            hours = remaining_time.seconds // 3600
+            minutes = (remaining_time.seconds % 3600) // 60
+            
+            info = {
+                'remaining_requests': 0,
+                'reset_in': f"{hours}小时{minutes}分钟后重置"
+            }
+            return False, info
+        
+        info = {
+            'remaining_requests': self.limit - data['count'],
+            'reset_in': f"{self.window}小时内"
+        }
+        return True, info 
