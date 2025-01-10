@@ -1,0 +1,14 @@
+credentials:
+  usernames:
+    admin:
+      email: admin@example.com
+      name: Admin User
+      password: $2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewYpfQN.Pz9C8bNK # admin123
+    user1:
+      email: user1@example.com
+      name: Test User
+      password: $2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewYpfQN.Pz9C8bNK # admin123
+cookie:
+  expiry_days: 30
+  key: 'some_signature_key'
+  name: 'auth_token'

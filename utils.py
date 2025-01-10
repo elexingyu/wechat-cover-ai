@@ -54,43 +54,41 @@ def generate_prompts(article_text):
         print(f"生成提示词时出错: {str(e)}")
         return default_prompts  # 发生错误时返回默认提示词
 
-def combine_images(cover_img, logo_path):
+def combine_images(cover_img, logo_img, x_pos=90, y_pos=90, size_percent=15, opacity=100):
     """
-    使用logo图片作为模板，将生成的图片调整为背景
+    将logo添加到封面图片上
+    
+    参数:
+    - cover_img: 封面图片
+    - logo_img: logo图片
+    - x_pos: logo水平位置（0-100）
+    - y_pos: logo垂直位置（0-100）
+    - size_percent: logo大小（占图片宽度的百分比）
+    - opacity: logo不透明度（0-100）
     """
-    # 打开logo图片作为模板
-    template = Image.open(logo_path)
-    template_width, template_height = template.size
+    # 转换为RGBA模式以支持透明度
+    cover_img = cover_img.convert('RGBA')
+    logo_img = logo_img.convert('RGBA')
     
-    # 调整生成图片的大小以适应模板
-    # 计算缩放比例，确保图片能完全覆盖模板
-    cover_ratio = cover_img.width / cover_img.height
-    template_ratio = template_width / template_height
+    # 计算logo的目标大小
+    target_width = int(cover_img.width * (size_percent / 100))
+    aspect_ratio = logo_img.width / logo_img.height
+    target_height = int(target_width / aspect_ratio)
     
-    if cover_ratio > template_ratio:
-        # 如果生成的图片更宽，按高度缩放
-        new_height = template_height
-        new_width = int(new_height * cover_ratio)
-    else:
-        # 如果生成的图片更高，按宽度缩放
-        new_width = template_width
-        new_height = int(new_width / cover_ratio)
+    # 调整logo大小
+    logo_img = logo_img.resize((target_width, target_height), Image.Resampling.LANCZOS)
     
-    # 调整生成图片的大小
-    cover_img = cover_img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    # 计算实际位置
+    x = int((cover_img.width - target_width) * x_pos / 100)
+    y = int((cover_img.height - target_height) * y_pos / 100)
     
-    # 居中裁剪
-    left = (new_width - template_width) // 2
-    top = (new_height - template_height) // 2
-    cover_img = cover_img.crop((left, top, left + template_width, top + template_height))
+    # 处理透明度
+    if opacity < 100:
+        logo_img.putalpha(Image.new('L', logo_img.size, int(255 * opacity / 100)))
     
-    # 创建最终图片
-    final_img = Image.new('RGBA', (template_width, template_height))
-    
-    # 放置背景图
+    # 创建新图片
+    final_img = Image.new('RGBA', cover_img.size)
     final_img.paste(cover_img, (0, 0))
+    final_img.paste(logo_img, (x, y), logo_img)
     
-    # 放置logo（使用alpha通道）
-    final_img.paste(template, (0, 0), template)
-    
-    return final_img 
+    return final_img.convert('RGB')  # 转回RGB模式 
