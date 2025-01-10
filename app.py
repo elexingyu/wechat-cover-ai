@@ -203,20 +203,50 @@ if st.button("生成封面"):
                             response = requests.get(output[0])
                             img = Image.open(BytesIO(response.content))
                             
+                            # 打印实际图片尺寸，帮助调试
+                            st.write(f"生成图片尺寸: {img.size}")
+                            
                             # 根据用户设置处理logo
                             if uploaded_logo:
                                 logo_img = Image.open(uploaded_logo)
-                                final_img = combine_images(
-                                    img, 
-                                    logo_img,
-                                    position=logo_position,
-                                    size_percent=logo_size,
-                                    margin=logo_margin
-                                )
-                            else:
-                                final_img = img
+                                # 如果是RGBA模式，裁剪掉透明边缘
+                                if logo_img.mode == 'RGBA':
+                                    alpha = logo_img.split()[3]
+                                    bbox = alpha.getbbox()
+                                    if bbox:
+                                        logo_img = logo_img.crop(bbox)
+                                
+                                # 直接使用百分比计算实际尺寸
+                                target_width = int(img.width * logo_size / 100)
+                                aspect_ratio = logo_img.width / logo_img.height
+                                target_height = int(target_width / aspect_ratio)
+                                
+                                # 调整logo大小
+                                logo_img = logo_img.resize((target_width, target_height), Image.Resampling.LANCZOS)
+                                
+                                # 计算实际位置
+                                x = int((img.width - target_width) * x_pos / 100)
+                                y = int((img.height - target_height) * y_pos / 100)
+                                
+                                # 处理透明度
+                                if logo_img.mode == 'RGBA':
+                                    logo_with_opacity = logo_img.copy()
+                                    if opacity < 100:
+                                        alpha = logo_with_opacity.split()[3]
+                                        alpha = alpha.point(lambda x: int(x * opacity / 100))
+                                        logo_with_opacity.putalpha(alpha)
+                                else:
+                                    logo_with_opacity = logo_img.convert('RGBA')
+                                    if opacity < 100:
+                                        alpha = Image.new('L', logo_img.size, int(255 * opacity / 100))
+                                        logo_with_opacity.putalpha(alpha)
+                                
+                                # 合成图片
+                                img = img.convert('RGBA')
+                                img.paste(logo_with_opacity, (x, y), logo_with_opacity)
+                                img = img.convert('RGB')
                             
-                            images.append(final_img)
+                            images.append(img)
                             st.success(f"✅ 第 {i} 张图片生成成功")
                         except Exception as e:
                             st.error(f"生成第 {i} 张图片时出错: {str(e)}")
