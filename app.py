@@ -48,9 +48,9 @@ with st.expander("Logo 设置（可选）"):
     )
     
     if uploaded_logo:
-        # 创建一个预览画布
-        preview_width = 800  # 预览宽度
-        preview_height = int(preview_width / 2.35)  # 2.35:1 的高度
+        # 创建一个预览画布 - 统一使用 900x383
+        preview_width = 900
+        preview_height = 383
         
         # 创建示例背景图
         preview_bg = Image.new('RGB', (preview_width, preview_height), (240, 240, 240))
@@ -76,8 +76,8 @@ with st.expander("Logo 设置（可选）"):
             logo_size = st.slider(
                 "Logo 大小 (%)",
                 min_value=5,
-                max_value=30,
-                value=15
+                max_value=100,
+                value=50
             )
             
             # Logo 位置控制
@@ -85,14 +85,14 @@ with st.expander("Logo 设置（可选）"):
                 "水平位置 (%)",
                 min_value=0,
                 max_value=100,
-                value=90
+                value=100
             )
             
             y_pos = st.slider(
                 "垂直位置 (%)",
                 min_value=0,
                 max_value=100,
-                value=90
+                value=0
             )
             
             # Logo 透明度
@@ -139,7 +139,7 @@ with st.expander("Logo 设置（可选）"):
                 preview.paste(logo_with_opacity, (x, y), logo_with_opacity)
             
             # 显示预览
-            st.image(preview, caption="Logo 位置预览", use_column_width=True)
+            st.image(preview, caption="Logo 位置预览", use_container_width=True)
             
             # 添加网格线帮助对齐
             if st.checkbox("显示网格线", value=False, key="show_grid"):
@@ -151,7 +151,7 @@ with st.expander("Logo 设置（可选）"):
                     draw.line([(i, 0), (i, preview_height)], fill=(200, 200, 200), width=1)
                 for i in range(0, preview_height, 100):
                     draw.line([(0, i), (preview_width, i)], fill=(200, 200, 200), width=1)
-                st.image(preview, caption="Logo 位置预览（带网格）", use_column_width=True)
+                st.image(preview, caption="Logo 位置预览（带网格）", use_container_width=True)
 
 if st.button("生成封面"):
     if word_count < 50:
@@ -203,8 +203,27 @@ if st.button("生成封面"):
                             response = requests.get(output[0])
                             img = Image.open(BytesIO(response.content))
                             
-                            # 打印实际图片尺寸，帮助调试
-                            st.write(f"生成图片尺寸: {img.size}")
+                            # 将16:9的图片裁剪成2.35:1，并调整为900x383
+                            current_ratio = img.width / img.height
+                            target_ratio = 2.35
+                            
+                            if current_ratio < target_ratio:
+                                # 需要裁剪高度
+                                new_height = int(img.width / target_ratio)
+                                crop_top = (img.height - new_height) // 2
+                                img = img.crop((0, crop_top, img.width, crop_top + new_height))
+                            else:
+                                # 需要裁剪宽度
+                                new_width = int(img.height * target_ratio)
+                                crop_left = (img.width - new_width) // 2
+                                img = img.crop((crop_left, 0, crop_left + new_width, img.height))
+                            
+                            # 调整到目标尺寸
+                            img = img.resize((900, 383), Image.Resampling.LANCZOS)
+                            
+                            st.write("调试信息:")
+                            st.write(f"预览画布尺寸: {preview_width}x{preview_height}")
+                            st.write(f"裁剪后图片尺寸: {img.size}")
                             
                             # 根据用户设置处理logo
                             if uploaded_logo:
