@@ -154,8 +154,8 @@ with st.expander("Logo 设置（可选）"):
                 st.image(preview, caption="Logo 位置预览（带网格）", use_container_width=True)
 
 if st.button("生成封面"):
-    if word_count < 50:
-        st.error("文章内容太短,请至少输入50个字")
+    if word_count < 5:
+        st.error("文章内容太短,请至少输入5个字")
         st.stop()
     if word_count > 3000:
         st.error("文章内容太长,请控制在3000字以内")
